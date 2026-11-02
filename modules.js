@@ -58,15 +58,32 @@ function printNota(t) {
   $('printArea').innerHTML = notaHTML(t);
   setTimeout(() => window.print(), 80);
 }
+function saveJpg(t) {
+  if (typeof html2canvas === 'undefined') return toast('Simpan JPG butuh internet. Periksa koneksi lalu muat ulang halaman.');
+  const box = document.createElement('div');
+  box.style.cssText = 'position:fixed;left:-10000px;top:0;';
+  box.innerHTML = notaHTML(t);
+  document.body.appendChild(box);
+  html2canvas(box.firstElementChild, { scale: 3, backgroundColor: '#ffffff' })
+    .then(c => c.toBlob(b => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b); a.download = 'Nota-' + t.number + '.jpg'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast('Nota disimpan sebagai JPG');
+    }, 'image/jpeg', 0.92))
+    .catch(() => toast('Gagal membuat gambar nota'))
+    .finally(() => box.remove());
+}
 function showNota(t) {
   const m = openModal(`<div class="nota-wrap">${notaHTML(t)}</div>
-    <p class="muted hint">Untuk menyimpan PDF, klik Simpan PDF lalu pilih printer "Save as PDF" (Simpan sebagai PDF) di jendela cetak.</p>
-    <div class="modal-actions"><button class="btn" data-x="close">Tutup</button><button class="btn" data-x="wa">Kirim WhatsApp</button><button class="btn" data-x="print">Simpan PDF</button><button class="btn btn-primary" data-x="print">Cetak Nota</button></div>`, true);
+    <p class="muted hint">Simpan JPG membuat gambar nota yang bisa dikirim ke pelanggan lewat WhatsApp atau aplikasi lain.</p>
+    <div class="modal-actions"><button class="btn" data-x="close">Tutup</button><button class="btn" data-x="wa">Kirim WhatsApp</button><button class="btn" data-x="jpg">Simpan JPG</button><button class="btn btn-primary" data-x="print">Cetak Nota</button></div>`, true);
   m.addEventListener('click', e => {
     const x = e.target.dataset.x;
     if (x === 'close') m.remove();
     if (x === 'print') printNota(t);
     if (x === 'wa') sendWA(t);
+    if (x === 'jpg') saveJpg(t);
   });
 }
 

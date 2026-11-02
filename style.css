@@ -273,3 +273,7 @@ td small { font-size: 12px; }
 .cart .btn-sm { padding: 4px 8px; }
 .prices li { gap: 8px; }
 .acts { flex-wrap: wrap; }
+
+/* Logo gambar (menggantikan kotak V) */
+.logo-img { height: 30px; width: auto; max-width: 120px; object-fit: contain; flex: none; }
+.brand-lg .logo-img { height: 46px; max-width: 160px; }

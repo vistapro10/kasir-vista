@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="style.css">
   <!-- Chart.js (butuh internet saat pertama kali dibuka) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <!-- html2canvas: untuk menyimpan nota sebagai JPG -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
   <script src="script.js" defer></script>
   <script src="modules.js" defer></script>
 </head>
@@ -16,7 +18,7 @@
 <section id="loginScreen" class="login">
   <form id="loginForm" class="login-card" autocomplete="off">
     <div class="brand brand-lg">
-      <span class="logo-mark">V</span>
+      <img src="logo.png" class="logo-img" alt="Logo VISTA PRINTING">
       <span class="brand-text"><strong>VISTA</strong> PRINTING</span>
     </div>
     <p class="muted">Masuk untuk membuka sistem kasir.</p>
@@ -40,7 +42,7 @@
   <aside id="sidebar" class="sidebar">
     <div class="sidebar-top">
       <div class="brand">
-        <span class="logo-mark">V</span>
+        <img src="logo.png" class="logo-img" alt="Logo VISTA PRINTING">
         <span class="brand-text label"><strong>VISTA</strong> PRINTING</span>
       </div>
     </div>

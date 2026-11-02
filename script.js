@@ -206,7 +206,7 @@ function tickClock() {
 const sum = (arr, fn) => arr.reduce((t, x) => t + (Number(fn(x)) || 0), 0);
 
 function renderDashboard() {
-  const trx = DB.get(KEY.transactions, []).filter(t => t.status !== 'BATAL');
+  const trx = DB.get(KEY.transactions, []).filter(t => t.status === 'LUNAS');
   const exp = DB.get(KEY.expenses, []);
   const products = DB.get(KEY.products, []);
 
@@ -247,7 +247,7 @@ function renderDashboard() {
       <td>${formatTanggalWaktu(t.createdAt)}</td>
       <td>${esc(t.customer || '-')}</td>
       <td class="num">${rupiah(t.total)}</td>
-      <td><span class="badge ${t.status === 'BATAL' ? 'bad' : 'ok'}">${esc(t.status || 'LUNAS')}</span></td>
+      <td><span class="badge ${t.status === 'LUNAS' ? 'ok' : 'bad'}">${esc(t.status || 'LUNAS')}</span></td>
     </tr>`).join('') : '<tr><td class="empty" colspan="5">Belum ada transaksi. Transaksi akan muncul di sini setelah kasir mulai bekerja.</td></tr>';
 
   /* Data grafik 7 hari terakhir */

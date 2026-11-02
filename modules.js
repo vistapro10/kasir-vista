@@ -4,10 +4,13 @@ const KEY_CLOSE = 'vista_closings';
 const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const ST = () => DB.get(KEY.settings, {});
 const fmtNum = n => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(n);
+const fmtM = n => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 }).format(Math.round(n * 1e6) / 1e6);
+const numID = v => Number(String(v).trim().replace(',', '.')) || 0;   // terima 2,3 maupun 2.3
+const dimTxt = it => `${fmtM(it.len)} x ${fmtM(it.wid)} ${it.du === 'm' ? 'm' : 'cm'}`;
 const tgl = iso => new Intl.DateTimeFormat('id-ID', { timeZone: TZ, day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(iso));
 const jam = iso => new Intl.DateTimeFormat('id-ID', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso)).replace('.', ':');
 const hourOf = d => Number(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', hourCycle: 'h23' }).format(new Date(d)));
-const validTrx = () => DB.get(KEY.transactions, []).filter(t => t.status !== 'BATAL');
+const validTrx = () => DB.get(KEY.transactions, []).filter(t => t.status === 'LUNAS');
 const addDay = k => dateKey(new Date(k + 'T12:00:00+07:00').getTime() + 86400000);
 
 function openModal(html, wide) {
@@ -29,10 +32,10 @@ function downloadFile(name, text, type) {
 function notaHTML(t) {
   const s = ST();
   const logo = s.logo ? `<img src="${s.logo}" class="n-logo" alt="Logo">` : '<span class="logo-mark n-logo-mark">V</span>';
-  const rows = t.items.map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.name)}${it.unit === 'meteran' ? `<br><small>${fmtNum(it.len)} x ${fmtNum(it.wid)} cm = ${fmtNum(it.area)} m²</small>` : ''}</td><td>${UNIT_INFO[it.unit].label}</td><td class="r">${fmtNum(it.qty)}</td><td class="r">${rupiah(it.price)}</td><td class="r">${rupiah(it.subtotal)}</td></tr>`).join('');
+  const rows = t.items.map((it, i) => `<tr><td>${i + 1}</td><td>${esc(it.name)}${it.unit === 'meteran' ? `<br><small>${dimTxt(it)}, ${fmtNum(it.qty)} cetak</small>` : ''}</td><td>${it.unit === 'meteran' ? 'm²' : UNIT_INFO[it.unit].label}</td><td class="r">${(it.unit === 'meteran' ? fmtM(it.area * it.qty) : fmtNum(it.qty))}</td><td class="r">${rupiah(it.price)}</td><td class="r">${rupiah(it.subtotal)}</td></tr>`).join('');
   return `<div class="nota-sheet ${s.paper === 'A5' ? '' : 'p' + s.paper}">
     <div class="n-head">${logo}<div><strong class="n-store">${esc(s.storeName)}</strong><br>${esc(s.address)}<br>WhatsApp: ${esc(s.whatsapp)}</div></div>
-    <h2 class="n-title">NOTA PEMBAYARAN</h2>
+    <h2 class="n-title">${t.status === 'BELUM LUNAS' ? 'NOTA TAGIHAN' : 'NOTA PEMBAYARAN'}</h2>
     <table class="n-meta"><tr><td>No. Nota</td><td>: ${esc(t.number)}</td><td>Tanggal</td><td>: ${tgl(t.createdAt)}</td></tr>
     <tr><td>Pelanggan</td><td>: ${esc(t.customer || '-')}</td><td>Jam</td><td>: ${jam(t.createdAt)} WIB</td></tr>
     <tr><td>Kasir</td><td>: ${esc(t.cashier)}</td><td>Metode</td><td>: ${esc(t.method)}</td></tr></table>
@@ -41,9 +44,10 @@ function notaHTML(t) {
       <tr><td>Total pesanan</td><td class="r">${rupiah(t.subtotal)}</td></tr>
       ${t.discount ? `<tr><td>Diskon</td><td class="r">- ${rupiah(t.discount)}</td></tr>` : ''}
       <tr class="bold"><td>Total pembayaran</td><td class="r">${rupiah(t.total)}</td></tr>
-      <tr><td>Uang diterima</td><td class="r">${rupiah(t.paid)}</td></tr>
-      <tr><td>Kembalian</td><td class="r">${rupiah(t.change)}</td></tr>
-      <tr class="bold"><td>Status pembayaran</td><td class="r">${t.status === 'BATAL' ? 'BATAL' : 'LUNAS'}</td></tr></table>
+      ${t.status === 'BELUM LUNAS'
+        ? `${t.paid ? `<tr><td>Uang muka (DP)</td><td class="r">${rupiah(t.paid)}</td></tr>` : ''}<tr class="bold"><td>Sisa tagihan</td><td class="r">${rupiah(t.total - t.paid)}</td></tr>`
+        : `<tr><td>Uang diterima</td><td class="r">${rupiah(t.paid)}</td></tr><tr><td>Kembalian</td><td class="r">${rupiah(t.change)}</td></tr>`}
+      <tr class="bold"><td>Status pembayaran</td><td class="r">${t.status}</td></tr></table>
     <p class="n-foot">${esc(s.footer)}<br>Simpan nota ini sebagai bukti transaksi.</p></div>`;
 }
 function printNota(t) {
@@ -57,18 +61,46 @@ function printNota(t) {
 function showNota(t) {
   const m = openModal(`<div class="nota-wrap">${notaHTML(t)}</div>
     <p class="muted hint">Untuk menyimpan PDF, klik Simpan PDF lalu pilih printer "Save as PDF" (Simpan sebagai PDF) di jendela cetak.</p>
-    <div class="modal-actions"><button class="btn" data-x="close">Tutup</button><button class="btn" data-x="print">Simpan PDF</button><button class="btn btn-primary" data-x="print">Cetak Nota</button></div>`, true);
+    <div class="modal-actions"><button class="btn" data-x="close">Tutup</button><button class="btn" data-x="wa">Kirim WhatsApp</button><button class="btn" data-x="print">Simpan PDF</button><button class="btn btn-primary" data-x="print">Cetak Nota</button></div>`, true);
   m.addEventListener('click', e => {
     const x = e.target.dataset.x;
     if (x === 'close') m.remove();
     if (x === 'print') printNota(t);
+    if (x === 'wa') sendWA(t);
   });
+}
+
+/* ================= KIRIM WHATSAPP & PELUNASAN ================= */
+function sendWA(t) {
+  let ph = t.phone || prompt('Nomor WhatsApp pelanggan (contoh 08123456789):', '');
+  if (!ph) return;
+  let n = String(ph).replace(/\D/g, '');
+  if (n.startsWith('0')) n = '62' + n.slice(1); else if (n.startsWith('8')) n = '62' + n;
+  if (n.length < 10) return toast('Nomor WhatsApp tidak valid');
+  const all = DB.get(KEY.transactions, []), x = all.find(i => i.id === t.id);
+  if (x && x.phone !== ph) { x.phone = ph; t.phone = ph; DB.set(KEY.transactions, all); }
+  const s = ST(), unpaid = t.status === 'BELUM LUNAS';
+  const lines = t.items.map((it, i) => `${i + 1}. ${it.name}${it.unit === 'meteran' ? ` (${dimTxt(it)}, ${fmtNum(it.qty)} cetak)` : ` x ${fmtNum(it.qty)} ${UNIT_INFO[it.unit].label}`} = ${rupiah(it.subtotal)}`).join('\n');
+  const text = `*${s.storeName}*\n${unpaid ? 'NOTA TAGIHAN' : 'NOTA PEMBAYARAN'}\nNo. Nota: ${t.number}\nTanggal: ${tgl(t.createdAt)} ${jam(t.createdAt)} WIB\nPelanggan: ${t.customer || '-'}\n\n${lines}\n\n` +
+    (t.discount ? `Diskon: ${rupiah(t.discount)}\n` : '') + `*Total: ${rupiah(t.total)}*\n` +
+    (unpaid ? (t.paid ? `DP: ${rupiah(t.paid)}\n` : '') + `*Sisa tagihan: ${rupiah(t.total - t.paid)}*\nStatus: BELUM LUNAS\n` : 'Status: LUNAS\n') +
+    `\n${s.footer}\nInfo: ${s.whatsapp}`;
+  window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(text), '_blank');
+}
+function markPaid(t) {
+  const all = DB.get(KEY.transactions, []), x = all.find(i => i.id === t.id), sisa = x.total - x.paid;
+  const v = prompt(`Sisa tagihan ${rupiah(sisa)}.\nMasukkan uang yang diterima sekarang:`, sisa);
+  if (v === null) return;
+  const got = numID(v);
+  if (got < sisa) return toast('Uang kurang dari sisa tagihan');
+  x.paid += got; x.change = x.paid - x.total; x.status = 'LUNAS'; x.paidAt = new Date().toISOString();
+  DB.set(KEY.transactions, all); renderRiwayat(); toast('Transaksi ditandai lunas');
 }
 
 /* ================= TAHAP 3-4: KASIR ================= */
 let cart = [], lastTrx = null;
 function calcItem(it) {
-  it.area = it.unit === 'meteran' ? it.len * it.wid / 10000 : 0;
+  it.area = it.unit === 'meteran' ? Math.round(it.len * it.wid * 1e6) / 1e6 : 0;   // panjang (m) x lebar (m)
   it.subtotal = Math.round(it.unit === 'meteran' ? it.area * it.price * it.qty : it.qty * it.price);
 }
 function totals() {
@@ -91,19 +123,22 @@ function renderKasir() {
 }
 function renderCart() {
   cart.forEach(calcItem);
-  $('cartBody').innerHTML = cart.length ? cart.map((it, i) => `<tr><td>${esc(it.name)}<br><small class="muted">${UNIT_INFO[it.unit].label}${it.unit === 'meteran' ? ` ${fmtNum(it.len)}x${fmtNum(it.wid)} cm` : ''}</small></td>
+  $('cartBody').innerHTML = cart.length ? cart.map((it, i) => `<tr><td>${esc(it.name)}<br><small class="muted">${UNIT_INFO[it.unit].label}${it.unit === 'meteran' ? ` ${dimTxt(it)} = ${fmtM(it.area * it.qty)} m² (${fmtNum(it.qty)} cetak)` : ''}</small></td>
     <td><div class="qty"><button type="button" data-c="-" data-i="${i}">-</button><span>${fmtNum(it.qty)}</span><button type="button" data-c="+" data-i="${i}">+</button></div></td>
-    <td class="num">${rupiah(it.price)}</td><td class="num">${rupiah(it.subtotal)}</td>
+    <td class="num">${rupiah(it.price)}${it.unit === 'meteran' ? '/m²' : ''}</td><td class="num">${rupiah(it.subtotal)}</td>
     <td><button type="button" class="btn btn-sm btn-danger" data-c="x" data-i="${i}">Hapus</button></td></tr>`).join('')
     : '<tr><td class="empty" colspan="5">Klik produk untuk memulai transaksi.</td></tr>';
   updatePay();
 }
 function updatePay() {
-  const { total } = totals(), tunai = $('cMethod').value === 'Tunai';
+  const { total } = totals(), mt = $('cMethod').value, tunai = mt === 'Tunai', unpaid = mt === 'Belum dibayar';
   $('cTotal').textContent = rupiah(total);
-  $('cPaid').disabled = !tunai;
-  if (!tunai) $('cPaid').value = total || '';
-  $('cChange').textContent = rupiah(Math.max(0, (Number($('cPaid').value) || 0) - total));
+  $('cPaid').disabled = !(tunai || unpaid);
+  if (!tunai && !unpaid) $('cPaid').value = total || '';
+  $('cPaidL').textContent = unpaid ? 'Uang muka / DP (opsional)' : 'Uang dibayar (Rp)';
+  $('cChangeL').textContent = unpaid ? 'Sisa tagihan' : 'Kembalian';
+  const paid = Number($('cPaid').value) || 0;
+  $('cChange').textContent = rupiah(unpaid ? Math.max(0, total - paid) : Math.max(0, paid - total));
 }
 function addToCart(p) {
   if (p.units.length === 1 && p.units[0] !== 'meteran') {
@@ -116,20 +151,20 @@ function addToCart(p) {
 function itemDialog(p) {
   const m = openModal(`<h3>${esc(p.name)}</h3><div class="form-grid">
     <div class="full"><label>Satuan</label><select id="dUnit">${p.units.map(u => `<option value="${u}">${UNIT_INFO[u].label} - ${rupiah(p[UNIT_INFO[u].field])}${UNIT_INFO[u].suffix}</option>`).join('')}</select></div>
-    <div id="dDims" class="full form-grid"><div><label>Panjang (cm)</label><input id="dLen" type="number" min="0" step="any"></div><div><label>Lebar (cm)</label><input id="dWid" type="number" min="0" step="any"></div></div>
+    <div id="dDims" class="full form-grid"><div><label>Panjang (meter)</label><input id="dLen" type="text" inputmode="decimal" placeholder="contoh: 2"></div><div><label>Lebar (meter)</label><input id="dWid" type="text" inputmode="decimal" placeholder="contoh: 2,3"></div></div>
     <div class="full"><label id="dQtyL">Jumlah</label><input id="dQty" type="number" min="1" step="1" value="1"></div></div>
     <p class="dsum">Luas: <b id="dArea">-</b> | Subtotal: <b id="dSub">Rp0</b></p><p id="dErr" class="error" hidden></p>
     <div class="modal-actions"><button class="btn" data-x="close">Batal</button><button class="btn btn-primary" data-x="add">Masukkan ke keranjang</button></div>`);
   const get = () => {
     const u = m.querySelector('#dUnit').value, price = p[UNIT_INFO[u].field];
-    const it = { pid: p.id, name: p.name, unit: u, price, qty: Number(m.querySelector('#dQty').value) || 0, len: Number(m.querySelector('#dLen').value) || 0, wid: Number(m.querySelector('#dWid').value) || 0 };
+    const it = { pid: p.id, name: p.name, unit: u, price, qty: Number(m.querySelector('#dQty').value) || 0, len: numID(m.querySelector('#dLen').value), wid: numID(m.querySelector('#dWid').value), du: 'm' };
     calcItem(it); return it;
   };
   const upd = () => {
     const it = get(), met = it.unit === 'meteran';
     m.querySelector('#dDims').hidden = !met;
     m.querySelector('#dQtyL').textContent = met ? 'Jumlah cetak' : 'Jumlah';
-    m.querySelector('#dArea').textContent = met ? fmtNum(it.area) + ' m²' : '-';
+    m.querySelector('#dArea').textContent = met ? `${fmtM(it.len)} m x ${fmtM(it.wid)} m = ${fmtM(it.area)} m² x ${it.qty} cetak = ${fmtM(it.area * it.qty)} m² x ${rupiah(it.price)}` : '-';
     m.querySelector('#dSub').textContent = rupiah(it.subtotal);
   };
   m.addEventListener('input', upd); m.addEventListener('change', upd); upd();
@@ -139,7 +174,7 @@ function itemDialog(p) {
     if (x === 'add') {
       const it = get(), er = m.querySelector('#dErr');
       if (it.qty < 1) { er.textContent = 'Jumlah minimal 1.'; er.hidden = false; return; }
-      if (it.unit === 'meteran' && (it.len <= 0 || it.wid <= 0)) { er.textContent = 'Isi panjang dan lebar lebih dari 0.'; er.hidden = false; return; }
+      if (it.unit === 'meteran' && (it.len <= 0 || it.wid <= 0)) { er.textContent = 'Isi panjang dan lebar (dalam meter) dengan angka lebih dari 0, contoh: 2,3.'; er.hidden = false; return; }
       const ex = it.unit !== 'meteran' && cart.find(i => i.pid === it.pid && i.unit === it.unit);
       if (ex) ex.qty += it.qty; else cart.push(it);
       m.remove(); renderCart();
@@ -158,17 +193,19 @@ function processTrx() {
   const { sub, disc, total } = totals();
   if ((Number($('cDisc').value) || 0) > sub) return fail('Diskon tidak boleh lebih besar dari total pesanan.');
   const method = $('cMethod').value;
-  const paid = method === 'Tunai' ? Number($('cPaid').value) || 0 : total;
-  if (paid < total) return fail(`Uang kurang ${rupiah(total - paid)}.`);
+  const unpaid = method === 'Belum dibayar';
+  const paid = (method === 'Tunai' || unpaid) ? Number($('cPaid').value) || 0 : total;
+  if (unpaid && paid >= total) return fail('Uang muka sama dengan atau melebihi total. Pilih metode pembayaran lunas.');
+  if (!unpaid && paid < total) return fail(`Uang kurang ${rupiah(total - paid)}.`);
   const t = {
-    id: Date.now(), number: nextNumber(), createdAt: new Date().toISOString(), customer: $('cCust').value.trim(), cashier: session.name,
-    items: cart.map(i => ({ name: i.name, unit: i.unit, qty: i.qty, len: i.len, wid: i.wid, area: i.area, price: i.price, subtotal: i.subtotal })),
-    subtotal: sub, discount: disc, total, paid, change: paid - total, method, status: 'LUNAS'
+    id: Date.now(), number: nextNumber(), createdAt: new Date().toISOString(), customer: $('cCust').value.trim(), phone: $('cPhone').value.trim(), cashier: session.name,
+    items: cart.map(i => ({ name: i.name, unit: i.unit, qty: i.qty, len: i.len, wid: i.wid, du: i.du, area: i.area, price: i.price, subtotal: i.subtotal })),
+    subtotal: sub, discount: disc, total, paid, change: unpaid ? 0 : paid - total, method, status: unpaid ? 'BELUM LUNAS' : 'LUNAS'
   };
   const all = DB.get(KEY.transactions, []); all.push(t);
   if (!DB.set(KEY.transactions, all)) return;
   lastTrx = t; cart = [];
-  $('cCust').value = ''; $('cDisc').value = ''; $('cPaid').value = '';
+  $('cCust').value = ''; $('cPhone').value = ''; $('cMethod').value = 'Tunai'; $('cDisc').value = ''; $('cPaid').value = '';
   $('btnPrintLast').disabled = false;
   renderCart(); showNota(t); toast('Transaksi berhasil: ' + t.number);
 }
@@ -179,11 +216,12 @@ function buildKasir() {
     <aside class="card cart"><h3>Keranjang</h3>
     <div class="table-wrap"><table><thead><tr><th>Produk</th><th>Jumlah</th><th class="num">Harga</th><th class="num">Subtotal</th><th></th></tr></thead><tbody id="cartBody"></tbody></table></div>
     <div class="pay"><label for="cCust">Nama pelanggan (opsional)</label><input id="cCust">
+    <label for="cPhone">No. WhatsApp pelanggan (opsional)</label><input id="cPhone" type="tel" inputmode="tel" placeholder="08xxxxxxxxxx">
     <label for="cDisc">Diskon (Rp)</label><input id="cDisc" type="number" min="0">
-    <label for="cMethod">Metode pembayaran</label><select id="cMethod"><option>Tunai</option><option>Transfer</option><option>QRIS</option></select>
+    <label for="cMethod">Metode pembayaran</label><select id="cMethod"><option>Tunai</option><option>Transfer</option><option>QRIS</option><option>Belum dibayar</option></select>
     <div class="line"><span>Total</span><strong id="cTotal">Rp0</strong></div>
-    <label for="cPaid">Uang dibayar (Rp)</label><input id="cPaid" type="number" min="0">
-    <div class="line"><span>Kembalian</span><strong id="cChange">Rp0</strong></div>
+    <label for="cPaid" id="cPaidL">Uang dibayar (Rp)</label><input id="cPaid" type="number" min="0">
+    <div class="line"><span id="cChangeL">Kembalian</span><strong id="cChange">Rp0</strong></div>
     <p id="cErr" class="error" hidden></p>
     <button id="btnProcess" type="button" class="btn btn-primary btn-block">PROSES TRANSAKSI</button>
     <button id="btnPrintLast" type="button" class="btn btn-block" disabled>CETAK NOTA</button>
@@ -203,7 +241,7 @@ function buildKasir() {
     renderCart();
   });
   ['cDisc', 'cPaid'].forEach(id => $(id).addEventListener('input', updatePay));
-  $('cMethod').addEventListener('change', updatePay);
+  $('cMethod').addEventListener('change', () => { $('cPaid').value = ''; updatePay(); });
   $('btnProcess').addEventListener('click', processTrx);
   $('btnPrintLast').addEventListener('click', () => lastTrx && printNota(lastTrx));
   $('btnClear').addEventListener('click', () => { cart = []; renderCart(); });
@@ -220,10 +258,10 @@ function filteredTrx() {
 function renderRiwayat() {
   const list = filteredTrx();
   $('rBody').innerHTML = list.length ? list.map(t => `<tr><td>${esc(t.number)}</td><td>${tgl(t.createdAt)}</td><td>${jam(t.createdAt)}</td><td>${esc(t.customer || '-')}</td><td class="num">${rupiah(t.total)}</td><td>${esc(t.method)}</td>
-    <td><span class="badge ${t.status === 'BATAL' ? 'bad' : 'ok'}">${esc(t.status)}</span></td>
-    <td class="acts"><button class="btn btn-sm" data-a="view" data-id="${t.id}">Detail</button><button class="btn btn-sm" data-a="print" data-id="${t.id}">Cetak Ulang Nota</button>${isAdmin() ? `<button class="btn btn-sm btn-danger" data-a="void" data-id="${t.id}">${t.status === 'BATAL' ? 'Aktifkan' : 'Batalkan'}</button>` : ''}</td></tr>`).join('')
+    <td><span class="badge ${t.status === 'LUNAS' ? 'ok' : 'bad'}">${esc(t.status)}</span></td>
+    <td class="acts"><button class="btn btn-sm" data-a="view" data-id="${t.id}">Detail</button><button class="btn btn-sm" data-a="print" data-id="${t.id}">Cetak Ulang Nota</button><button class="btn btn-sm" data-a="wa" data-id="${t.id}">Kirim WA</button>${t.status === 'BELUM LUNAS' ? `<button class="btn btn-sm btn-primary" data-a="pay" data-id="${t.id}">Tandai Lunas</button>` : ''}${isAdmin() ? `<button class="btn btn-sm btn-danger" data-a="void" data-id="${t.id}">${t.status === 'BATAL' ? 'Aktifkan' : 'Batalkan'}</button>` : ''}</td></tr>`).join('')
     : '<tr><td class="empty" colspan="8">Tidak ada transaksi yang cocok.</td></tr>';
-  $('rInfo').textContent = `${list.length} transaksi | Total (tidak termasuk batal): ${rupiah(sum(list.filter(t => t.status !== 'BATAL'), t => t.total))}`;
+  $('rInfo').textContent = `${list.length} transaksi | Lunas: ${rupiah(sum(list.filter(t => t.status === 'LUNAS'), t => t.total))} | Belum dibayar: ${rupiah(sum(list.filter(t => t.status === 'BELUM LUNAS'), t => t.total - t.paid))}`;
 }
 function buildRiwayat() {
   $('page-riwayat').innerHTML = `<div class="toolbar"><input id="rQ" type="search" placeholder="Cari nomor atau nama pelanggan...">
@@ -243,8 +281,10 @@ function buildRiwayat() {
     const all = DB.get(KEY.transactions, []), t = all.find(x => x.id === Number(b.dataset.id));
     if (b.dataset.a === 'view') showNota(t);
     if (b.dataset.a === 'print') printNota(t);
+    if (b.dataset.a === 'wa') sendWA(t);
+    if (b.dataset.a === 'pay') markPaid(t);
     if (b.dataset.a === 'void' && confirm(t.status === 'BATAL' ? 'Aktifkan kembali transaksi ini?' : 'Batalkan transaksi ini? Nilainya tidak lagi dihitung di laporan.')) {
-      t.status = t.status === 'BATAL' ? 'LUNAS' : 'BATAL'; DB.set(KEY.transactions, all); renderRiwayat();
+      t.status = t.status === 'BATAL' ? (t.paid >= t.total ? 'LUNAS' : 'BELUM LUNAS') : 'BATAL'; DB.set(KEY.transactions, all); renderRiwayat();
     }
   });
 }

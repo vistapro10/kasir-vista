@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VISTA PRINTING POS</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js (butuh internet saat pertama kali dibuka) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="modules.js" defer></script>
+</head>
+<body>
+
+<!-- ================= HALAMAN LOGIN ================= -->
+<section id="loginScreen" class="login">
+  <form id="loginForm" class="login-card" autocomplete="off">
+    <div class="brand brand-lg">
+      <span class="logo-mark">V</span>
+      <span class="brand-text"><strong>VISTA</strong> PRINTING</span>
+    </div>
+    <p class="muted">Masuk untuk membuka sistem kasir.</p>
+
+    <label for="loginUser">Username</label>
+    <input id="loginUser" type="text" required placeholder="Masukkan username">
+
+    <label for="loginPass">Password</label>
+    <input id="loginPass" type="password" required placeholder="Masukkan password">
+
+    <p id="loginError" class="error" hidden></p>
+    <button type="submit" class="btn btn-primary btn-block">Masuk</button>
+  </form>
+</section>
+
+<!-- ================= APLIKASI ================= -->
+<div id="app" class="app" hidden>
+
+  <div id="overlay" class="overlay"></div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <span class="logo-mark">V</span>
+        <span class="brand-text label"><strong>VISTA</strong> PRINTING</span>
+      </div>
+    </div>
+    <nav id="menu" class="menu" aria-label="Menu utama"></nav>
+    <div class="sidebar-bottom">
+      <div class="user-box">
+        <span class="avatar" id="userAvatar">A</span>
+        <span class="label">
+          <strong id="userName">Admin</strong>
+          <small id="userRole" class="muted">admin</small>
+        </span>
+      </div>
+      <button id="btnLogout" class="menu-item" type="button"></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button id="btnMenu" class="icon-btn" type="button" aria-label="Buka atau tutup sidebar"></button>
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="clock">
+        <span id="clockDate"></span>
+        <strong id="clockTime"></strong>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- DASHBOARD -->
+      <section id="page-dashboard" class="page">
+        <div class="cards">
+          <article class="card stat"><span class="stat-icon" data-icon="coin"></span><div><p class="muted">Total Penjualan Hari Ini</p><h2 id="stSales">Rp0</h2></div></article>
+          <article class="card stat"><span class="stat-icon" data-icon="receipt"></span><div><p class="muted">Total Transaksi Hari Ini</p><h2 id="stTrx">0</h2></div></article>
+          <article class="card stat"><span class="stat-icon" data-icon="wallet"></span><div><p class="muted">Total Pengeluaran Hari Ini</p><h2 id="stExp">Rp0</h2></div></article>
+          <article class="card stat"><span class="stat-icon" data-icon="trend"></span><div><p class="muted">Keuntungan Bersih Hari Ini</p><h2 id="stProfit">Rp0</h2></div></article>
+          <article class="card stat"><span class="stat-icon" data-icon="box"></span><div><p class="muted">Jumlah Produk</p><h2 id="stProducts">0</h2></div></article>
+          <article class="card stat"><span class="stat-icon" data-icon="calendar"></span><div><p class="muted">Transaksi Bulan Ini</p><h2 id="stTrxMonth">0</h2></div></article>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <h3>Penjualan 7 Hari Terakhir</h3>
+            <div class="chart-box"><canvas id="chartDaily"></canvas></div>
+          </article>
+          <article class="card">
+            <h3>Pendapatan Bulanan <span id="yearLabel" class="muted"></span></h3>
+            <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
+          </article>
+        </div>
+
+        <div class="grid-2 grid-wide-left">
+          <article class="card">
+            <h3>Transaksi Terbaru</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>No. Transaksi</th><th>Waktu</th><th>Pelanggan</th><th class="num">Total</th><th>Status</th></tr></thead>
+                <tbody id="recentBody"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Ringkasan Bulan Ini</h3>
+            <div class="summary">
+              <div><span class="muted">Pemasukan</span><strong id="smIncome">Rp0</strong></div>
+              <div class="bar"><i id="barIncome"></i></div>
+              <div><span class="muted">Pengeluaran</span><strong id="smExpense">Rp0</strong></div>
+              <div class="bar"><i id="barExpense" class="bar-alt"></i></div>
+              <div class="summary-total"><span>Keuntungan bersih</span><strong id="smProfit">Rp0</strong></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- KATALOG PRODUK -->
+      <section id="page-katalog" class="page" hidden>
+        <div class="toolbar">
+          <input id="catSearch" type="search" placeholder="Cari nama produk...">
+          <select id="catFilter" aria-label="Filter kategori"><option value="">Semua kategori</option></select>
+          <button id="btnAddProduct" class="btn btn-primary" type="button">+ Tambah Produk</button>
+        </div>
+        <p id="catInfo" class="muted"></p>
+        <div id="productGrid" class="product-grid"></div>
+      </section>
+
+      <!-- Halaman lain dibuat otomatis oleh script.js (placeholder sampai tahapnya dikerjakan) -->
+      <div id="otherPages"></div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================= FORM PRODUK ================= -->
+<div id="productModal" class="modal" hidden>
+  <form id="productForm" class="modal-card" autocomplete="off">
+    <h3 id="modalTitle">Tambah Produk</h3>
+    <div class="form-grid">
+      <div class="full"><label for="pName">Nama produk</label><input id="pName" type="text" required></div>
+      <div><label for="pCategory">Kategori</label><input id="pCategory" type="text" list="categoryList" required><datalist id="categoryList"></datalist></div>
+      <div><label for="pActive">Status</label><select id="pActive"><option value="1">Aktif</option><option value="0">Tidak aktif</option></select></div>
+      <div class="full"><label for="pDesc">Deskripsi</label><textarea id="pDesc" rows="2"></textarea></div>
+      <div class="full">
+        <label for="pPhoto">Foto produk</label>
+        <div class="photo-row">
+          <div id="photoPreview" class="photo-preview"></div>
+          <div class="photo-actions">
+            <input id="pPhoto" type="file" accept="image/*">
+            <button type="button" id="btnRemovePhoto" class="btn">Hapus foto</button>
+          </div>
+        </div>
+      </div>
+      <div class="full">
+        <label>Satuan yang tersedia dan harganya</label>
+        <div class="unit-row"><input type="checkbox" data-unit="pcs" id="uPcs"><label for="uPcs">PCS</label><input type="number" min="0" step="any" data-price="pricePcs" placeholder="Harga per PCS" disabled></div>
+        <div class="unit-row"><input type="checkbox" data-unit="lembaran" id="uLbr"><label for="uLbr">Lembaran</label><input type="number" min="0" step="any" data-price="priceLembar" placeholder="Harga per lembar" disabled></div>
+        <div class="unit-row"><input type="checkbox" data-unit="meteran" id="uMtr"><label for="uMtr">Meteran</label><input type="number" min="0" step="any" data-price="priceMeter" placeholder="Harga per m²" disabled></div>
+      </div>
+    </div>
+    <p id="formError" class="error" hidden></p>
+    <div class="modal-actions">
+      <button type="button" id="btnCancelProduct" class="btn">Batal</button>
+      <button type="submit" class="btn btn-primary">Simpan produk</button>
+    </div>
+  </form>
+</div>
+
+</body>
+</html>

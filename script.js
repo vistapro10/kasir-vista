@@ -2,8 +2,8 @@
    Dimuat SEBELUM modules.js. Semua data disimpan di Supabase (tabel app_data). */
 
 /* ---------- 1. KONFIGURASI SUPABASE (WAJIB DIISI) ---------- */
-const SB_URL = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54b3Rlemtwandzam5hZm5raW9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQyOTU0NjEsImV4cCI6MjEwOTg3MTQ2MX0.7kj5SFjSsYI0LXwBv09ysoYBWcZTxCR7qO-eQ_0GPXE';
-const SB_KEY = 'sb_publishable_hb_pNhlUBqb1cVvpJB0sjA_YxBEMTDu';   // Supabase > Project Settings > API Keys > anon / publishable key
+const SB_URL = 'https://nxotezkpjwsjnafnkior.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54b3Rlemtwandzam5hZm5raW9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQyOTU0NjEsImV4cCI6MjEwOTg3MTQ2MX0.7kj5SFjSsYI0LXwBv09ysoYBWcZTxCR7qO-eQ_0GPXE';   // Supabase > Project Settings > API Keys > anon / publishable key
 const EMAIL_DOMAIN = '@vista.local';           // username "admin" => email admin@vista.local
 
 const TZ = 'Asia/Jakarta';

@@ -470,7 +470,11 @@ function buildPengaturan() {
     const login = $('aLogin').value.trim().toLowerCase();
     if (!login || users.some(x => x.id !== u.id && x.username.toLowerCase() === login)) return toast('Username kosong atau sudah dipakai');
     u.name = $('aName').value.trim() || u.name; u.username = login;
-    if ($('aPass').value) { if ($('aPass').value.length < 6) return toast('Password minimal 6 karakter'); u.password = $('aPass').value; }
+    if ($('aPass').value) {
+      if ($('aPass').value.length < 6) return toast('Password minimal 6 karakter');
+      if (session.id === u.id) sb.auth.updateUser({ password: $('aPass').value }).then(r => toast(r.error ? 'Gagal ganti password: ' + r.error.message : 'Password berhasil diganti'));
+      else toast('Password akun lain diganti lewat Supabase > Authentication > Users');
+    }
     DB.set(KEY.users, users);
     if (session.id === u.id) { session.name = u.name; session.username = u.username; DB.set(KEY.session, session); $('userName').textContent = u.name; }
     renderPengaturan(); toast('Akun disimpan');
@@ -503,3 +507,4 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { const m = [...document.querySelectorAll('.modal.dyn')].pop(); if (m) m.remove(); } });
   checkClosing(); setInterval(checkClosing, 30000);
 });
+
